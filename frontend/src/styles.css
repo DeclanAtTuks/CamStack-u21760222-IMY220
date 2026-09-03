@@ -1,0 +1,38 @@
+/** {
+    background-color: #1E1E1E;
+}*/
+@font-face {
+    font-family: audiowide;
+    src: url(Audiowide-Regular.ttf);
+}
+
+* {
+    font-family: audiowide;
+}
+
+nav {
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    background-color: #922D50;
+    justify-content: space-evenly;
+}
+
+nav img {
+    max-height: 40px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.navLink {
+    display: flex;
+    text-decoration: none;
+    border: 1px solid #74203d;
+    background-color: #74203d;
+    padding: 10px;
+    font-size: x-large;
+    border-radius: 50px;
+    color: #D4E79E;
+
+}
