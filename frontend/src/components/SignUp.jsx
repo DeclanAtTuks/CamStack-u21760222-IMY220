@@ -51,7 +51,7 @@ function SignUp() {
             return;
         }
         try {
-            const response = await fetch("http://localhost:1337/signup", {
+            const response = await fetch("http://localhost:1337/api/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

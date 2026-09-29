@@ -1,9 +1,11 @@
 import express from "express";
 import cors from "cors";
-
-// CREATE APP
+import dotenv from "dotenv";
+import { ObjectId } from "mongodb";
+import { connectDB, getDB } from "./db.js";
+dotenv.config();
 const app = express();
-
+const PORT = process.env.PORT || 1337;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -11,38 +13,113 @@ app.get("/", (req, res) => {
     res.send("Its finally alright champ your backend is up.");
 });
 
-//STUBS
-app.post("/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
             return res.status(400).json({ message: "Username and Password is required." });
         }
+        const db = getDB();
+        const collection = db.collection("users");
+        const user = await collection.findOne({ username });
+        console.log(user);
+        if (!user) {
+            return res.status(401).json({ error: "Invalid username." });
+        }
+        if (password !== user.password) {
+            return res.status(401).json({ error: "invalid password" });
+        }
         res.status(200).json({
-            message: "Login successful.",
-            username: username,
-            id: Date.now()
+            message: "Login successful.", _id: user._id, username: user.username, bio: user.bio,
         });
     } catch (error) {
         res.status(500).json({ error: "Failed to login in user", details: error.message })
     }
 });
-app.post("/signup", (req, res) => {
+app.post("/api/signup", async (req, res) => {
     try {
         const { username, email, password } = req.body;
         if (!username || !password || !email) {
-            return res.status(400).json({ message: "Username, Email and Password is required" });
+            return res.status(400).json({ error: "Username, Email and Password is required" });
         }
-        res.status(201).json({
-            message: "Sign Up successful.",
-            username: username,
-            id: Date.now()
-        });
+        const db = getDB();
+        const collection = db.collection("users");
+
+        const existing = await collection.findOne({ username });
+        if (existing) {
+            return res.status(405).json({ error: "Username already in use." });
+        }
+        const newUser = {
+            username,//: username,
+            email,//: email,
+            password: password,
+            bio: "",
+            profilePicture: "",
+            friends: [],
+            createdAt: new Date(),
+        };
+        const result = await collection.insertOne(newUser);
+        res.status(201).json({ message: "SignUp Successful", _id: result.insertedId, username, email });
     } catch (error) {
+        console.error("Signup error:", error);
         res.status(500).json({ error: "Failed to signup user", details: error.message })
     }
 })
-// PORT
-app.listen(1337, () => {
-    console.log("Listening on localhost:1337");
+
+app.get("/api/posts", async (req, res) => {
+    // TODO: Retrieve all posts from MongoDB
+    try {
+        const db = getDB();
+        const collection = db.collection("posts");
+        const posts = await collection.find().toArray();
+
+        res.json(posts);
+    } catch (error) {
+        console.error("Error retrieving posts:", error);
+        res.status(500).json({ error: "Failed to retrieve posts." });
+    }
+
 });
+
+app.post("/api/posts", async (req, res) => {
+    // TODO: Validate and add a post to MongoDB
+    try {
+        const { author, username, caption, image, hashtags } = req.body;
+        if (!username || !username.trim() || !caption || !caption.trim()) {
+            return res.status(400).json({ error: "Username and caption are required." });
+        }
+        const db = getDB();
+
+        const collection = db.collection("posts");
+
+        const newPost = {
+            author: new ObjectId(author),
+            username,
+            caption,
+            image,
+            likes: [],
+            hashtags: hashtags,
+            createdAt: new Date,
+            updatedAt: new Date,
+        };
+        const result = await collection.insertOne(newPost);
+        res.status(201).json({
+            _id: result.insertedId,
+            ...newPost
+        });
+    } catch (error) {
+        console.error("Error adding post:", error);
+        res.status(500).json({ error: "Failed to add post." });
+    }
+
+});
+
+connectDB()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`Server running on http://localhost:${PORT}`);
+        });
+    })
+    .catch((error) => {
+        console.error("Failed to connect to MongoDB:", error);
+    });
