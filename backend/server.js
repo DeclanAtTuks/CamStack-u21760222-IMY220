@@ -231,6 +231,129 @@ app.put("/api/users/:id", async (req, res) => {
     }
 })
 
+
+
+//search users
+app.get("/api/users", async (req, res) => {
+    try {
+        const search = (req.query.search || "").trim();
+        const filter = search ? { username: { $regex: search, $options: "i" } } : {};
+        const db = getDB();
+        const collection = db.collection("users");
+        const users = await collection.find(filter, { projection: { username: 1, bio: 1, profilePicture: 1 } }).toArray();
+        res.status(200).json(users);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "No instance found of search" })
+    }
+})
+
+//onepost
+app.get("/api/posts/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = getDB();
+        const collection = db.collection("posts");
+        const post = await collection.findOne({ _id: new ObjectId(id) });
+        if (!post) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+        res.status(200).json(post);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to get post" })
+    }
+})
+
+//posts under one user
+app.get("/api/users/:id/posts", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = getDB();
+        const collection = db.collection("posts");
+        const posts = await collection.aggregate([{ $match: { author: new ObjectId(id) } }]).toArray();
+        res.status(200).json(posts);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to get users posts" });
+    }
+})
+
+//localfeed
+app.get("/api/feed/local", async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const db = getDB();
+        const userCollection = db.collection("users");
+        if (!ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "no friends" })
+        }
+        const myAcc = await userCollection.findOne({ _id: new ObjectId(userId) });
+        if (!myAcc) {
+            return res.status(404).json({ error: "User not found" });
+
+        }
+        const friendlys = [myAcc._id, ...(myAcc.friends || [])];
+        const postCollection = db.collection("posts");
+        const posts = await postCollection.aggregate([{ $match: { author: { $in: friendlys } } }]).toArray();
+        res.status(200).json(posts);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to get local feed" });
+    }
+})
+
+//edit own posts
+app.put("/api/posts/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, caption, hashtags } = req.body;
+        if (!caption || !caption.trim()) {
+            return res.status(400).json({ error: "caption is required." });
+        }
+        const db = getDB();
+        const collection = db.collection("posts");
+        const post = await collection.findOne({ _id: new ObjectId(id) });
+        if (!post) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+        if (post.author.toString() !== userId) {
+            return res.status(403).json({ error: "You can only edit your own posts." });
+        }
+        await collection.updateOne({ _id: post._id }, { $set: { caption: caption, hashtags: hashtags, updatedAt: new Date() } });
+        res.status(200).json({ message: "post updated" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to get local feed" });
+    }
+})
+
+app.delete("/api/posts/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.query;
+        const db = getDB();
+        const postCollection = db.collection("posts");
+        const post = await postCollection.findOne({ _id: new ObjectId(id) });
+        if (!post) {
+            return res.status(404).json({ error: "Post not found." });
+        }
+        if (post.author.toString() !== userId) {
+            return res.status(403).json({ error: "You can only delete your own posts." });
+        }
+        const postCollection2 = db.collection("posts");
+        await postCollection2.deleteOne({ _id: post._id });
+        const albumCollection = db.collection("albums");
+        await albumCollection.updateMany({}, { $pull: { posts: post._id } });
+        //const commentsCollection = db.collection("comments");
+        //await commentsCollection.deleteMany({ post: post._id });
+        res.json({ message: "Post deleted." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to delete post" });
+    }
+})
+
 connectDB()
     .then(() => {
         app.listen(PORT, () => {
