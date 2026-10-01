@@ -29,7 +29,7 @@ function AllUserPosts({ userId }) {
             <h2>Posts</h2>
             <div>
                 {posts.map(post => (
-                    <PostPreview key={post.id} post={post} />
+                    <PostPreview key={post._id} post={post} />
                 ))}
                 {errors && <p>{errors}</p>}
                 {loading && <p>loading...</p>}

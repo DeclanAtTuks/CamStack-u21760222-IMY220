@@ -7,7 +7,6 @@ function PostPreview({ post }) {
                 <Link to={`/profile/${post.author}`}>{post.author}</Link>
                 <p>{post.caption}</p>
                 <div>
-                    <p>{post.likes} likes </p>
                     <p>{post.comments} comments </p>
                     <p>{post.createdAt} </p>
                 </div>

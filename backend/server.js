@@ -113,7 +113,6 @@ app.post("/api/posts", async (req, res) => {
             username,
             caption,
             image,
-            likes: [],
             hashtags: hashtags,
             createdAt: new Date,
             updatedAt: new Date,
@@ -130,72 +129,93 @@ app.post("/api/posts", async (req, res) => {
 
 });
 
-//Get All Albums
+//list albums
 app.get("/api/albums", async (req, res) => {
     try {
-        const { author } = req.query;
+        const { owner } = req.query;
         const filter = {};
-        if (author) {
-            filter.author = new ObjectId(author);
+        if (owner) {
+            filter.owner = new ObjectId(owner);
         }
         const db = getDB();
         const collection = db.collection("albums");
         const albums = await collection.find(filter).toArray();
         res.json(albums);
     } catch (error) {
-        console.error("Error retrieving albums:", error);
-        res.status(500).json({ error: "Failed to retrieve albums." });
-    }
-});
-
-//Create album
-app.post("/api/albums", async (req, res) => {
-    try {
-        const { author, username, albumName, description } = req.body;
-        if (!username || !username.trim() || !albumName || !albumName.trim()) {
-            return res.status(400).json({ error: "Username and album name are required." });
-        }
-        const db = getDB();
-        const collection = db.collection("albums");
-        const newAlbum = {
-            author: new ObjectId(author),
-            username,
-            albumName,
-            description,
-            posts: [],
-            createdAt: new Date,
-            updatedAt: new Date,
-        };
-        const result = await collection.insertOne(newAlbum);
-        res.status(201).json({ _id: result.insertedId, ...newAlbum });
-    } catch (error) {
-        console.error("Error adding album:", error);
-        res.status(500).json({ error: "Failed to create album." });
-    }
-
-});
-
-//Adding a post to album
-app.post("/api/albums/add-post", async (req, res) => {
-    try {
-        const { author, albumName } = req.body;
-        if (!username || !username.trim() || !albumName || !albumName.trim()) {
-            return res.status(400).json({ error: "Username and album name are required." });
-        }
-        const db = getDB();
-        const collection = db.collection("albums");
-
-        const result = await collection.insertOne(newAlbum);
-        res.status(201).json({
-            _id: result.insertedId,
-            ...newAlbum
-        });
-    } catch (error) {
         console.error("Error adding post to album:", error);
         res.status(500).json({ error: "Failed to add post to album." });
     }
-
 });
+
+//create album
+app.post("/api/albums", async (req, res) => {
+    try {
+        const { userId, name, description } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Album name is required." });
+        }
+        const album = {
+            owner: new ObjectId(userId),
+            name: name.trim(),
+            description: (description || "").trim(),
+            posts: [],
+            createdAt: new Date()
+        };
+        const db = getDB();
+        const collection = db.collection("albums");
+        const result = await collection.insertOne(album);
+        res.status(201).json({ _id: result.insertedId, ...album });
+    } catch (error) {
+        console.error("Error adding album:", error);
+        res.status(500).json({ error: "Failed to add album." });
+    }
+});
+
+//edit album
+app.put("/api/albums/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, name, description } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Album name is required." });
+        }
+        const db = getDB();
+        const collection = db.collection("albums");
+        const album = await collection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "You can only edit your own albums." });
+        }
+        await collection.updateOne({ _id: album._id }, { $set: { name: name.trim(), description: (description || "").trim() } });
+        res.json({ message: "Album updated." });
+    } catch (error) {
+        console.error("Error updating album:", error);
+        res.status(500).json({ error: "Failed to update album." });
+    }
+});
+app.delete("/api/albums/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.query;
+        const db = getDB();
+        const collection = db.collection("albums");
+        const album = await collection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "You can only delete your own albums." });
+        }
+        await collection.deleteOne({ _id: album._id });
+        res.json({ message: "Album deleted." });
+    } catch (error) {
+        console.error("Error deleting album:", error);
+        res.status(500).json({ error: "Failed to delete album." });
+    }
+});
+
 
 //Getting a profile
 app.get("/api/users/:id", async (req, res) => {
@@ -346,8 +366,6 @@ app.delete("/api/posts/:id", async (req, res) => {
         await postCollection2.deleteOne({ _id: post._id });
         const albumCollection = db.collection("albums");
         await albumCollection.updateMany({}, { $pull: { posts: post._id } });
-        //const commentsCollection = db.collection("comments");
-        //await commentsCollection.deleteMany({ post: post._id });
         res.json({ message: "Post deleted." });
     } catch (error) {
         console.error(error);

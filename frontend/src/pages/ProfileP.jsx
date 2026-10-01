@@ -5,6 +5,7 @@ import ProfileC from "../components/ProfileC";
 import EditProfile from "../components/EditProfile";
 import CreatePost from "../components/CreatePost";
 import AllUserPosts from "../components/AllUserPosts";
+import Albums from "../components/Albums";
 
 function ProfileP() {
     const { id } = useParams();
@@ -21,6 +22,7 @@ function ProfileP() {
             {isOwn && isEditing && <EditProfile onSaved={handleSave} />}
             {isOwn && <CreatePost />}
             <AllUserPosts userId={id} />
+            <Albums userId={id} />
             <Friends userId={id} />
         </div>
     );
