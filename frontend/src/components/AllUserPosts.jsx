@@ -1,37 +1,38 @@
 import PostPreview from "./PostPreview";
-const myPosts = [
-    {
-        id: 6,
-        userId: 201,
-        username: "You My Chyna Bean",
-        imageUrl: "../../my-post-1.jpg",
-        caption: "touch of class",
-        hashtags: ["bday", "crackhead", "goodtimes"],
-        likes: 132,
-        commentCount: 8,
-        datePosted: "2026-07-31"
-    },
-    {
-        id: 7,
-        userId: 201,
-        username: "You My Chyna Bean",
-        imageUrl: "../../my-post-2.jpg",
-        caption: "Uni Time",
-        hashtags: ["poop", "suffering"],
-        likes: 88,
-        commentCount: 15,
-        datePosted: "2026-03-05"
+import { useEffect, useState } from "react";
+function AllUserPosts({ userId }) {
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [errors, setErrors] = useState("");
+    async function fetchPosts() {
+        try {
+            setLoading(true);
+            setErrors("");
+            const response = await fetch(`http://localhost:1337/api/users/${userId}/posts`)
+            if (!response.ok) {
+                throw new Error("Failed to fetch posts");
+            }
+            const data = await response.json();
+            setPosts(data);
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+            setErrors("Could not load posts. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
     }
-];
-
-function AllUserPosts() {
+    useEffect(() => {
+        fetchPosts();
+    }, []);
     return (
         <section>
             <h2>Posts</h2>
             <div>
-                {myPosts.map(post => (
+                {posts.map(post => (
                     <PostPreview key={post.id} post={post} />
                 ))}
+                {errors && <p>{errors}</p>}
+                {loading && <p>loading...</p>}
             </div>
         </section>
     );

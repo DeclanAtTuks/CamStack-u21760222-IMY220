@@ -1,49 +1,54 @@
+import { useState } from "react";
 import PostPreview from "./PostPreview";
-const examplePosts = [
-    {
-        id: 1,
-        userId: 101,
-        username: "Sokka_Of_Water_Tribe",
-        imageUrl: "../../sokka-post.jpg",
-        caption: "On God I would kill for a steak",
-        hashtags: ["waterTribe", "meatEater", "justJoking",],
-        likes: 132,
-        commentCount: 8,
-        datePosted: "2015-07-30",
-    },
-    {
-        id: 2,
-        userId: 102,
-        username: "Creeds_Thoughts",
-        imageUrl: "../../creed-post.webp",
-        caption: "I am standing on BIZNUS",
-        hashtags: ["scranton", "electricCity",],
-        likes: 0,
-        commentCount: 0,
-        datePosted: "2008-08-17",
-    },
-    {
-        id: 3,
-        userId: 103,
-        username: "Mel_Medarda",
-        imageUrl: "../../mel-post.webp",
-        caption: "Just a girl living Top Side",
-        hashtags: ["topSide", "sunrise", "piltover",],
-        likes: 47,
-        commentCount: 2,
-        datePosted: "2025-12-12",
-    },
-];
+import { useEffect } from "react";
 
 function Feed({ title }) {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [errors, setErrors] = useState("");
+    useEffect(() => {
+        async function fetchPosts() {
+            try {
+                setLoading(true);
+                setErrors("");
+                setPosts([]);
+
+                let url = "http://localhost:1337/api/posts";
+                if (title === "Friends") {
+                    const user = JSON.parse(localStorage.getItem("user"));
+                    if (!user) {
+                        setErrors("Please log in to see your friends' posts.");
+                        return;
+                    }
+                    url = `http://localhost:1337/api/feed/local?userId=${user._id}`;
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch posts");
+                }
+                const data = await response.json();
+                setPosts(data);
+            } catch (err) {
+                console.error("Error fetching posts:", err);
+                setErrors("Could not load posts. Please try again later.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchPosts();
+    }, [title]);
     return (
         <section>
             <h2>{title}</h2>
             <div>
-                {examplePosts.map(post => (
-                    <PostPreview key={post.id} post={post} />
+                {posts.map(post => (
+                    <PostPreview key={post._id} post={post} />
                 ))}
             </div>
+            {errors && <p>{errors}</p>}
+            {loading && <p>loading...</p>}
         </section>
     );
 }

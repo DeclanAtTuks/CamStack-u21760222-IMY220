@@ -6,7 +6,7 @@ const placeholderFriends = [
     { id: 102, username: "Creeds_Thoughts", profilePicture: "../../creed-profile-pic.webp", friendCount: 1, },
     { id: 103, username: "Mel_Medarda", profilePicture: "../../mel-profile-pic.jpg", friendCount: 4, },
 ];
-function Friends() {
+function Friends({ userId }) {
     const [searchTerm, setSearchTerm] = useState("");
     function handleSearchChange(event) {
         setSearchTerm(event.target.value);

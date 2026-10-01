@@ -130,12 +130,17 @@ app.post("/api/posts", async (req, res) => {
 
 });
 
-//Get Albums
+//Get All Albums
 app.get("/api/albums", async (req, res) => {
     try {
+        const { author } = req.query;
+        const filter = {};
+        if (author) {
+            filter.author = new ObjectId(author);
+        }
         const db = getDB();
         const collection = db.collection("albums");
-        const albums = await collection.find().toArray();
+        const albums = await collection.find(filter).toArray();
         res.json(albums);
     } catch (error) {
         console.error("Error retrieving albums:", error);
@@ -146,7 +151,7 @@ app.get("/api/albums", async (req, res) => {
 //Create album
 app.post("/api/albums", async (req, res) => {
     try {
-        const { author, username, albumName } = req.body;
+        const { author, username, albumName, description } = req.body;
         if (!username || !username.trim() || !albumName || !albumName.trim()) {
             return res.status(400).json({ error: "Username and album name are required." });
         }
@@ -156,15 +161,13 @@ app.post("/api/albums", async (req, res) => {
             author: new ObjectId(author),
             username,
             albumName,
+            description,
             posts: [],
             createdAt: new Date,
             updatedAt: new Date,
         };
         const result = await collection.insertOne(newAlbum);
-        res.status(201).json({
-            _id: result.insertedId,
-            ...newAlbum
-        });
+        res.status(201).json({ _id: result.insertedId, ...newAlbum });
     } catch (error) {
         console.error("Error adding album:", error);
         res.status(500).json({ error: "Failed to create album." });
@@ -230,8 +233,6 @@ app.put("/api/users/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to update Profile." })
     }
 })
-
-
 
 //search users
 app.get("/api/users", async (req, res) => {
@@ -351,6 +352,17 @@ app.delete("/api/posts/:id", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to delete post" });
+    }
+})
+
+//comments off a post
+app.get("api/posts/:id/comments", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to load comments" });
     }
 })
 
