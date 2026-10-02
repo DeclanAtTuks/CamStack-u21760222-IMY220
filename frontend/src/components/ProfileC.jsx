@@ -1,20 +1,21 @@
-const myProfile = {
-    id: 201,
-    username: "You My Chyna Bean",
-    profilePicture: "../../my-profile-pic.jpg",
-    bio: "I put the cough in coffee",
-    friendCount: 12,
-    postCount: 8
-};
-function ProfileC() {
+import { useState, useEffect } from "react";
+function ProfileC({ userId }) {
+    const [profile, setProfile] = useState(null);
+    useEffect(() => {
+        fetch(`http://localhost:1337/api/users/${userId}`)
+            .then(res => res.json())
+            .then(setProfile)
+            .catch(err => console.error(err));
+    }, [userId]);
+    if (!profile) return <p>Loading---</p>
     return (
         <div>
-            <img src={myProfile.profilePicture} />
-            <h1>{myProfile.username}</h1>
-            <p>{myProfile.bio}</p>
+            <img src={profile.profilePicture} />
+            <h1>{profile.username}</h1>
+            <p>{profile.bio}</p>
             <div>
-                <p>{myProfile.friendCount} friends </p>
-                <p>{myProfile.postCount} posts </p>
+                <p>{profile.friendCount} friends </p>
+                <p>{profile.postCount} posts </p>
             </div>
         </div>
     );

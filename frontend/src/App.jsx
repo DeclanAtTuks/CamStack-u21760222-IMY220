@@ -27,7 +27,7 @@ function AppRoutes() {
           <Route path="/home" element={<Home />} />
           <Route path="/global" element={<Feed title="Global" />} />
           <Route path="/friends" element={<Feed title="Friends" />} />
-          <Route path="/profile" element={<ProfileP />} />
+          <Route path="/profile/:id" element={<ProfileP />} />
           <Route path="/post/:id" element={<PostP />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

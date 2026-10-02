@@ -2,17 +2,13 @@ import { Link } from "react-router-dom";
 function PostPreview({ post }) {
     return (
         <div>
-            <Link to={`/post/${post.id}`}><img src={post.imageUrl} /></Link>
+            <Link to={`/post/${post._id}`}><img src={post.imageUrl} /></Link>
             <div>
-                <Link to={`/profile/${post.userId}`}>{post.username}</Link>
+                <Link to={`/profile/${post.author}`}>{post.author}</Link>
                 <p>{post.caption}</p>
                 <div>
-                    {post.hashtags.map(tag => (
-                        <span key={tag}><Link to="*">#{tag}</Link></span>
-                    ))}
-                    <p>{post.likes} likes </p>
-                    <p>{post.commentCount} comments </p>
-                    <p>{post.datePosted} </p>
+                    <p>{post.comments} comments </p>
+                    <p>{post.createdAt} </p>
                 </div>
             </div>
         </div>

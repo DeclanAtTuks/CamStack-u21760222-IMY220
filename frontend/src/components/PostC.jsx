@@ -9,8 +9,7 @@ function PostC({ post }) {
                 ))}
             </div>
             <div>
-                <span>{post.likes} likes</span>
-                <span>{post.datePosted}</span>
+                <span>{post.createdAt}</span>
             </div>
         </div>
     );
