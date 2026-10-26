@@ -224,12 +224,9 @@ app.post("/api/albums/:id/posts", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId, postId } = req.body;
-        if (!validId(id) || !validId(postId)) {
-            return res.status(400).json({ error: "Invalid album or post id." });
-        }
         const db = getDB();
         const albumCollection = db.collection("albums");
-        const album = await albumCollection.findOne({ _id: oid(id) });
+        const album = await albumCollection.findOne({ _id: new ObjectId(id) });
         if (!album) {
             return res.status(404).json({ error: "Album not found." });
         }
@@ -255,12 +252,9 @@ app.delete("/api/albums/:id/posts/:postId", async (req, res) => {
     try {
         const { id, postId } = req.params;
         const { userId } = req.body;
-        if (!validId(id) || !validId(postId)) {
-            return res.status(400).json({ error: "Invalid album or post id." });
-        }
         const db = getDB();
         const albumCollection = db.collection("albums");
-        const album = await albumCollection.findOne({ _id: oid(id) });
+        const album = await albumCollection.findOne({ _id: new ObjectId(id) });
         if (!album) {
             return res.status(404).json({ error: "Album not found." });
         }
@@ -433,13 +427,13 @@ app.delete("/api/posts/:id", async (req, res) => {
 })
 
 //comments off a post
-app.get("api/posts/:id/comments", async (req, res) => {
+app.get("/api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const db = getDB();
         const collection = db.collection("comments");
         const comments = await collection.aggregate([
-            { $match: { post: oid(id) } },
+            { $match: { post: new ObjectId(id) } },
             { $sort: { createdAt: 1 } },
             { $lookup: { from: "users", localField: "author", foreignField: "_id", as: "authorInfo" } },
             { $unwind: "$authorInfo" },
@@ -452,17 +446,18 @@ app.get("api/posts/:id/comments", async (req, res) => {
     }
 })
 //add comment
-app.post("api/posts/:id/comments", async (req, res) => {
+app.post("/api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId, text } = req.body;
-        if (!validId(id) || !validId(userId)) return res.status(400).json({ error: "Valid post id and userId are required." });
-        if (!text || !text.trim()) return res.status(400).json({ error: "An actual comment is needed." });
+        if (!text || !text.trim()) {
+            return res.status(400).json({ error: "An actual comment is needed." });
+        }
         const db = getDB();
         const postCollection = db.collection("posts");
         const post = await postCollection.findOne({ _id: new ObjectId(id) });
         if (!post) return res.status(404).json({ error: "Post not found" });
-        const comment = { post: post._id, author: oid(userId), text: text.trim(), createdAt: new Date() };
+        const comment = { post: post._id, author: new ObjectId(userId), text: text.trim(), createdAt: new Date() };
         const commentCollection = db.collection("comments");
         const result = await commentCollection.insertOne(comment);
         res.status(201).json({ _id: result.insertedId, ...comment });
@@ -473,11 +468,10 @@ app.post("api/posts/:id/comments", async (req, res) => {
 })
 
 //delete comment
-app.post("api/comments/:id", async (req, res) => {
+app.post("/api/comments/:id", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId } = req.body;
-        if (!validId(id) || !validId(userId)) return res.status(400).json({ error: "Valid comment id is required." });
         const db = getDB();
         const commentCollection1 = db.collection("comments");
         const comment = await commentCollection1.findOne({ _id: new ObjectId(id) });
