@@ -195,6 +195,8 @@ app.put("/api/albums/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to update album." });
     }
 });
+
+//delete album
 app.delete("/api/albums/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -215,6 +217,7 @@ app.delete("/api/albums/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to delete album." });
     }
 });
+
 
 
 //Getting a profile
@@ -348,7 +351,7 @@ app.put("/api/posts/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to get local feed" });
     }
 })
-
+//delete own post
 app.delete("/api/posts/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -377,10 +380,59 @@ app.delete("/api/posts/:id", async (req, res) => {
 app.get("api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
-
+        const db = getDB();
+        const collection = db.collection("comments");
+        const comments = await collection.aggregate([
+            { $match: { post: oid(id) } },
+            { $sort: { createdAt: 1 } },
+            { $lookup: { from: "users", localField: "author", foreignField: "_id", as: "authorInfo" } },
+            { $unwind: "$authorInfo" },
+            { $project: { text: 1, createdAt: 1, author: 1, "authorInfo.username": 1, "authorInfo.profilePicture": 1 } }
+        ]).toArray();
+        res.status(200).json(comments);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to load comments" });
+    }
+})
+//add comment
+app.post("api/posts/:id/comments", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, text } = req.body;
+        if (!validId(id) || !validId(userId)) return res.status(400).json({ error: "Valid post id and userId are required." });
+        if (!text || !text.trim()) return res.status(400).json({ error: "An actual comment is needed." });
+        const db = getDB();
+        const postCollection = db.collection("posts");
+        const post = await postCollection.findOne({ _id: new ObjectId(id) });
+        if (!post) return res.status(404).json({ error: "Post not found" });
+        const comment = { post: post._id, author: oid(userId), text: text.trim(), createdAt: new Date() };
+        const commentCollection = db.collection("comments");
+        const result = await commentCollection.insertOne(comment);
+        res.status(201).json({ _id: result.insertedId, ...comment });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to add comment" });
+    }
+})
+
+//delete comment
+app.post("api/comments/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+        if (!validId(id) || !validId(userId)) return res.status(400).json({ error: "Valid comment id is required." });
+        const db = getDB();
+        const commentCollection1 = db.collection("comments");
+        const comment = await commentCollection1.findOne({ _id: new ObjectId(id) });
+        if (!comment) return res.status(404).json({ error: "Comment not found" });
+        if (comment.author.toString() !== userId) return res.status(403).json({ error: "Comments cannot be deleted unless by user who made them" });
+        const commentCollection2 = db.collection("comments");
+        await commentCollection2.deleteOne({ _id: comment._id });
+        res.status(201).json({ message: "Comment Deleted" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to delete comment" });
     }
 })
 

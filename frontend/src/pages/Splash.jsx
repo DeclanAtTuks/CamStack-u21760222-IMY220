@@ -18,7 +18,6 @@ function Splash() {
             {!showSignUp && <button onClick={displaySignUp}>Sign Up</button>}
             {showSignUp && <SignUp />}
             {showLogin && <Login />}
-            <Link to="/home" >Go Home</Link>
         </div>
     );
 }
