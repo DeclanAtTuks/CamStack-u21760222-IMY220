@@ -218,7 +218,63 @@ app.delete("/api/albums/:id", async (req, res) => {
     }
 });
 
+//add post to album
 
+app.post("/api/albums/:id/posts", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, postId } = req.body;
+        if (!validId(id) || !validId(postId)) {
+            return res.status(400).json({ error: "Invalid album or post id." });
+        }
+        const db = getDB();
+        const albumCollection = db.collection("albums");
+        const album = await albumCollection.findOne({ _id: oid(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "Album can only be added to if you made it." });
+        }
+        const postCollection = db.collection("posts");
+        const post = await postCollection.findOne({ _id: new ObjectId(postId) });
+        if (!post) {
+            return res.status(404).json({ error: "Post not found." });
+        }
+        await albumCollection.updateOne({ _id: album._id }, { $addToSet: { posts: post._id } });
+
+        res.status(201).json({ message: "Post added to album" });
+    } catch (error) {
+        console.error("Error adding post to album:", error);
+        res.status(500).json({ error: "Failed to add post to album." });
+    }
+});
+
+//remove post from album
+app.delete("/api/albums/:id/posts/:postId", async (req, res) => {
+    try {
+        const { id, postId } = req.params;
+        const { userId } = req.body;
+        if (!validId(id) || !validId(postId)) {
+            return res.status(400).json({ error: "Invalid album or post id." });
+        }
+        const db = getDB();
+        const albumCollection = db.collection("albums");
+        const album = await albumCollection.findOne({ _id: oid(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "Album can only be removed to if you made it." });
+        }
+        await albumCollection.updateOne({ _id: album._id }, { $pull: { posts: new ObjectId(postId) } });
+
+        res.status(201).json({ message: "Post removed from album" });
+    } catch (error) {
+        console.error("Error removing post from album:", error);
+        res.status(500).json({ error: "Failed to remove post from album." });
+    }
+});
 
 //Getting a profile
 app.get("/api/users/:id", async (req, res) => {
