@@ -11,7 +11,7 @@ function Friends({ userId }) {
     return (
         <div>
             <h2>Friends</h2>
-            <input type="search" placeholder="Search friends" value={searchTerm} onChange={handleSearchChange} />
+            <input type="search" className="bg-slate-200 mx-6" placeholder="Search friends" id="friends-input" value={searchTerm} onChange={handleSearchChange} />
             <div>
 
             </div>

@@ -1,16 +1,15 @@
 import { Link } from "react-router-dom";
 import Image from "./Image";
-function ProfilePreview({ profile }) {
+function ProfilePreview({ user }) {
     return (
         <div>
-            <Link to={`/profile/${profile.id}`}>
-                <Image imageUrl={profile.profilePicture} />
+            <Link to={`/profile/${user.id}`}>
+                <Image imageUrl={user.profilePicture} />
                 <div>
-                    <p>{profile.username}</p>
-
+                    <p>{user.username}</p>
+                    <p>{user.bio}</p>
                 </div>
             </Link>
-            <p>{profile.friendCount} friends</p>
         </div>
     );
 }

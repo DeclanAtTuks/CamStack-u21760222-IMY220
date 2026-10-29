@@ -1,13 +1,17 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import { ObjectId } from "mongodb";
 import { connectDB, getDB } from "./db.js";
 //image uploads
 import multer from "multer";
+import path from "node:path";
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 1337;
+const UPLOAD_DIR = path.join(import.meta.dirname, "uploads");
+app.use("/uploads", express.static(UPLOAD_DIR));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -15,15 +19,29 @@ app.use(express.urlencoded({ extended: true }));
 //tells multer to create some storage for the files that we are going to be uploading
 //cb stands for callback
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "frontend/public/assets/images");
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        cb(null, `${unique}${ext}`);
     },
 });
-//multer middleware instance
-const uploadImage = multer({ storage: storage })
+
+
+function imagesOnly(req, file, cb) {
+    if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only image files are allowed."));
+    }
+}
+
+// 3. With a size limit (200 MB).
+const upload = multer({
+    storage,
+    fileFilter: imagesOnly,
+    limits: { fileSize: 200 * 1024 * 1024 },
+});
 
 //check its wokring
 app.get("/", (req, res) => {
@@ -35,7 +53,7 @@ app.post("/api/login", async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
-            return res.status(400).json({ message: "Username and Password is required." });
+            return res.status(400).json({ error: "Username and Password is required." });
         }
         const db = getDB();
         const collection = db.collection("users");
@@ -100,11 +118,20 @@ app.get("/api/posts", async (req, res) => {
 });
 
 //add post
-app.post("/api/posts", async (req, res) => {
+app.post("/api/posts", upload.single("image"), async (req, res) => {
     try {
-        const { author, username, caption, image, hashtags } = req.body;
+        const { author, username, caption } = req.body;
         if (!username || !username.trim() || !caption || !caption.trim()) {
             return res.status(400).json({ error: "Username and caption are required." });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: "Please choose an image." });
+        }
+        let hashtags = [];
+        try {
+            hashtags = JSON.parse(req.body.hashtags || "[]");
+        } catch {
+            hashtags = [];
         }
         const db = getDB();
         const collection = db.collection("posts");
@@ -112,8 +139,8 @@ app.post("/api/posts", async (req, res) => {
             author: new ObjectId(author),
             username,
             caption,
-            image,
-            hashtags: hashtags,
+            image: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
+            hashtags,
             createdAt: new Date,
             updatedAt: new Date,
         };
@@ -147,6 +174,26 @@ app.get("/api/albums", async (req, res) => {
     }
 });
 
+//one album with all posts in it
+app.get("/api/albums/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = getDB();
+        const collection = db.collection("albums");
+        const album = await collection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "No Album found" });
+        }
+        const postCollection = db.collection("posts");
+        const posts = await postCollection.aggregate([{ $match: { _id: { $in: album.posts || [] } } }]).toArray();
+        const userCollection = db.collection("users");
+        const owner = await userCollection.findOne({ _id: album.owner }, { projection: { username: 1, profilePicture: 1 } });
+        res.json({ ...album, posts, ownerInfo: owner });
+    } catch (error) {
+        console.error("Error getting album:", error);
+        res.status(500).json({ error: "Failed to get album." });
+    }
+})
 //create album
 app.post("/api/albums", async (req, res) => {
     try {
@@ -195,6 +242,8 @@ app.put("/api/albums/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to update album." });
     }
 });
+
+//delete album
 app.delete("/api/albums/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -216,6 +265,57 @@ app.delete("/api/albums/:id", async (req, res) => {
     }
 });
 
+//add post to album
+
+app.post("/api/albums/:id/posts", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, postId } = req.body;
+        const db = getDB();
+        const albumCollection = db.collection("albums");
+        const album = await albumCollection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "Album can only be added to if you made it." });
+        }
+        const postCollection = db.collection("posts");
+        const post = await postCollection.findOne({ _id: new ObjectId(postId) });
+        if (!post) {
+            return res.status(404).json({ error: "Post not found." });
+        }
+        await albumCollection.updateOne({ _id: album._id }, { $addToSet: { posts: post._id } });
+
+        res.status(201).json({ message: "Post added to album" });
+    } catch (error) {
+        console.error("Error adding post to album:", error);
+        res.status(500).json({ error: "Failed to add post to album." });
+    }
+});
+
+//remove post from album
+app.delete("/api/albums/:id/posts/:postId", async (req, res) => {
+    try {
+        const { id, postId } = req.params;
+        const { userId } = req.body;
+        const db = getDB();
+        const albumCollection = db.collection("albums");
+        const album = await albumCollection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "Album not found." });
+        }
+        if (album.owner.toString() !== userId) {
+            return res.status(403).json({ error: "Album can only be removed to if you made it." });
+        }
+        await albumCollection.updateOne({ _id: album._id }, { $pull: { posts: new ObjectId(postId) } });
+
+        res.status(201).json({ message: "Post removed from album" });
+    } catch (error) {
+        console.error("Error removing post from album:", error);
+        res.status(500).json({ error: "Failed to remove post from album." });
+    }
+});
 
 //Getting a profile
 app.get("/api/users/:id", async (req, res) => {
@@ -235,17 +335,27 @@ app.get("/api/users/:id", async (req, res) => {
 })
 
 //edit prof
-app.put("/api/users/:id", async (req, res) => {
+app.put("/api/users/:id", upload.single("profilePicture"), async (req, res) => {
     try {
         const { id } = req.params;
-        const { bio, profilePicture } = req.body;
+        const { userId, bio } = req.body;
+        if (userId !== id) {
+            return res.status(403).json({ error: "You can only edit your own profile." });
+        }
         const updates = {};
         if (bio !== undefined) updates.bio = String(bio).trim();
-        if (profilePicture !== undefined) updates.profilePicture = String(profilePicture).trim();
+        if (req.file) {
+            updates.profilePicture = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        }
         const db = getDB();
         const collection = db.collection("users");
-        if (Object.keys(updates).length === 0) return res.json("Nothing to update");
+        if (Object.keys(updates).length === 0) {
+            return res.json("Nothing to update");
+        }
         const result = await collection.updateOne({ _id: new ObjectId(id) }, { $set: updates });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "User not found." });
+        }
         const user = await collection.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } });
         return res.status(200).json(user);
     } catch (error) {
@@ -306,9 +416,6 @@ app.get("/api/feed/local", async (req, res) => {
         const { userId } = req.query;
         const db = getDB();
         const userCollection = db.collection("users");
-        if (!ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "no friends" })
-        }
         const myAcc = await userCollection.findOne({ _id: new ObjectId(userId) });
         if (!myAcc) {
             return res.status(404).json({ error: "User not found" });
@@ -342,13 +449,16 @@ app.put("/api/posts/:id", async (req, res) => {
             return res.status(403).json({ error: "You can only edit your own posts." });
         }
         await collection.updateOne({ _id: post._id }, { $set: { caption: caption, hashtags: hashtags, updatedAt: new Date() } });
-        res.status(200).json({ message: "post updated" });
+        const updatedPost = await collection.findOne({
+            _id: post._id
+        });
+        res.status(200).json(updatedPost);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Failed to get local feed" });
+        res.status(500).json({ error: "Failed to update post" });
     }
 })
-
+//delete own post
 app.delete("/api/posts/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -374,15 +484,75 @@ app.delete("/api/posts/:id", async (req, res) => {
 })
 
 //comments off a post
-app.get("api/posts/:id/comments", async (req, res) => {
+app.get("/api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
-
+        const db = getDB();
+        const collection = db.collection("comments");
+        const comments = await collection.aggregate([
+            { $match: { post: new ObjectId(id) } },
+            { $sort: { createdAt: 1 } },
+            { $lookup: { from: "users", localField: "author", foreignField: "_id", as: "authorInfo" } },
+            { $unwind: "$authorInfo" },
+            { $project: { text: 1, createdAt: 1, author: 1, "authorInfo.username": 1, "authorInfo.profilePicture": 1 } }
+        ]).toArray();
+        res.status(200).json(comments);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to load comments" });
     }
 })
+//add comment
+app.post("/api/posts/:id/comments", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, text } = req.body;
+        if (!text || !text.trim()) {
+            return res.status(400).json({ error: "An actual comment is needed." });
+        }
+        const db = getDB();
+        const postCollection = db.collection("posts");
+        const post = await postCollection.findOne({ _id: new ObjectId(id) });
+        if (!post) return res.status(404).json({ error: "Post not found" });
+        const comment = { post: post._id, author: new ObjectId(userId), text: text.trim(), createdAt: new Date() };
+        const commentCollection = db.collection("comments");
+        const result = await commentCollection.insertOne(comment);
+        res.status(201).json({ _id: result.insertedId, ...comment });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to add comment" });
+    }
+})
+
+//delete comment
+app.delete("/api/comments/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.query;
+        const db = getDB();
+        const commentCollection1 = db.collection("comments");
+        const comment = await commentCollection1.findOne({ _id: new ObjectId(id) });
+        if (!comment) return res.status(404).json({ error: "Comment not found" });
+        if (comment.author.toString() !== userId) return res.status(403).json({ error: "Comments cannot be deleted unless by user who made them" });
+        const commentCollection2 = db.collection("comments");
+        await commentCollection2.deleteOne({ _id: comment._id });
+        res.status(201).json({ message: "Comment Deleted" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to delete comment" });
+    }
+})
+
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        const message =
+            err.code === "LIMIT_FILE_SIZE"
+                ? "That image is too big (max 2 MB)."
+                : err.message;
+        return res.status(400).json({ message });
+    }
+    res.status(400).json({ message: err.message });
+});
 
 connectDB()
     .then(() => {

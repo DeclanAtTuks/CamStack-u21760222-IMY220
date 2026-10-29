@@ -7,6 +7,7 @@ import NotFound from './pages/NotFound';
 import Splash from "./pages/Splash";
 import Feed from "./components/Feed";
 import './App.css';
+import './index.css';
 import {
   BrowserRouter,
   Routes,

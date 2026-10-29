@@ -1,6 +1,7 @@
 import { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 function SignUp() {
+    const navigate = useNavigate();
     const [inputs, setInputs] = useState({
         username: "",
         email: "",
@@ -75,25 +76,25 @@ function SignUp() {
             <h2>Sign Up</h2>
             <div>
                 <label htmlFor="sign-up-username">Username</label>
-                <input type="text" required id="sign-up-username" name="username" value={inputs.username} onChange={handleChange} />
+                <input type="text" required className="bg-slate-200 mx-6" id="sign-up-username" name="username" value={inputs.username} onChange={handleChange} />
                 {errors.username && <p>{errors.username}</p>}
             </div>
             <div>
                 <label htmlFor="sign-up-email">Email</label>
-                <input type="email" required autoComplete="email" id="sign-up-email" name="email" value={inputs.email} onChange={handleChange} />
+                <input type="email" className="bg-slate-200 mx-6" required autoComplete="email" id="sign-up-email" name="email" value={inputs.email} onChange={handleChange} />
                 {errors.email && <p>{errors.email}</p>}
             </div>
             <div>
                 <label htmlFor="sign-up-password">New Password</label>
-                <input type="password" required minLength={8} id="sign-up-password" name="password" value={inputs.password} onChange={handleChange} />
+                <input type="password" className="bg-slate-200 mx-6" required minLength={8} id="sign-up-password" name="password" value={inputs.password} autoComplete="new-password" onChange={handleChange} />
                 {errors.password && <p>{errors.password}</p>}
             </div>
             <div>
                 <label htmlFor="sign-up-conPassword">Confirm Password</label>
-                <input type="password" required minLength={8} id="sign-up-conPassword" name="conPassword" value={inputs.conPassword} onChange={handleChange} />
+                <input type="password" className="bg-slate-200 mx-6" required minLength={8} id="sign-up-conPassword" name="conPassword" value={inputs.conPassword} autoComplete="new-password" onChange={handleChange} />
                 {errors.conPassword && <p>{errors.conPassword}</p>}
             </div>
-            <button type="submit">Sign Up</button>
+            <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Sign Up</button>
         </form>
     );
 }
