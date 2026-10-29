@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 function ProfileC({ userId }) {
     const [profile, setProfile] = useState(null);
+    const [error, setError] = useState("");
     useEffect(() => {
         fetch(`http://localhost:1337/api/users/${userId}`)
             .then(res => res.json())
             .then(setProfile)
-            .catch(err => console.error(err));
+            .catch(err => setError(err.message));
     }, [userId]);
     if (!profile) return <p>Loading---</p>
     return (
@@ -13,10 +14,6 @@ function ProfileC({ userId }) {
             <img src={profile.profilePicture} />
             <h1>{profile.username}</h1>
             <p>{profile.bio}</p>
-            <div>
-                <p>{profile.friendCount} friends </p>
-                <p>{profile.postCount} posts </p>
-            </div>
         </div>
     );
 }

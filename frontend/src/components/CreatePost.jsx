@@ -19,7 +19,12 @@ function CreatePost() {
         formData.append("caption", caption);
         formData.append("author", me._id);
         formData.append("username", me.username);
-        formData.append("hashtags", JSON.stringify(hashtags));
+        const hashtagArray = hashtags
+            .split(/[,\s]+/)
+            .filter(Boolean)
+            .map(tag => tag.replace(/^#/, ""));
+
+        formData.append("hashtags", JSON.stringify(hashtagArray));
         try {
             const res = await fetch("http://localhost:1337/api/posts/", {
                 method: "POST",
@@ -40,15 +45,15 @@ function CreatePost() {
             <h2>Create Post</h2>
             <div>
                 <label htmlFor="post-image">Image</label>
-                <input id="post-image" type="file" accept="image/*" onChange={e => setImage(e.target.files[0])} />
+                <input id="post-image" className="bg-slate-200 mx-6" type="file" accept="image/*" onChange={e => setImage(e.target.files[0])} />
             </div>
             <div>
                 <label htmlFor="post-caption">Caption</label>
-                <textarea id="post-caption" value={caption} onChange={e => setCaption(e.target.value)} rows={3} />
+                <textarea id="post-caption" className="bg-slate-200 mx-6" value={caption} onChange={e => setCaption(e.target.value)} rows={3} />
             </div>
             <div>
                 <label htmlFor="post-hashtags">Hashtags</label>
-                <input id="post-hashtags" type="text" placeholder="" value={hashtags} onChange={e => setHashtags(e.target.value)} />
+                <input id="post-hashtags" className="bg-slate-200 mx-6" type="text" placeholder="" value={hashtags} onChange={e => setHashtags(e.target.value)} />
             </div>
             <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Post</button>
             {error && <p>{error}</p>}

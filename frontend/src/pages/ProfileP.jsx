@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Friends from "../components/Friends";
 import ProfileC from "../components/ProfileC";
@@ -6,8 +6,15 @@ import EditProfile from "../components/EditProfile";
 import CreatePost from "../components/CreatePost";
 import AllUserPosts from "../components/AllUserPosts";
 import Albums from "../components/Albums";
-
+import { useNavigate } from "react-router-dom";
 function ProfileP() {
+    const navigate = useNavigate();
+    const savedUser = localStorage.getItem('user');
+    useEffect(() => {
+        if (savedUser === null) {
+            navigate("/");
+        }
+    }, [navigate]);
     const { id } = useParams();
     const me = JSON.parse(localStorage.getItem("user"));
     const isOwn = (me && me._id === id);

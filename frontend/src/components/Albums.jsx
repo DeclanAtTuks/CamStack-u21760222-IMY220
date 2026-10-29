@@ -31,18 +31,58 @@ function Albums({ userId }) {
     const viewAlbum = async (album) => {
         try {
             const posts = await Promise.all(
-                (album.posts || []).map(pid => api(`/api/posts/${pid}`).catch(() => null))
+                (album.posts || []).map(async (pid) => {
+                    try {
+                        const res = await fetch(
+                            `http://localhost:1337/api/posts/${pid}`
+                        );
+
+                        const data = await res.json();
+
+                        if (!res.ok) {
+                            throw new Error(data.error || "Failed to load post.");
+                        }
+
+                        return data;
+                    } catch (err) {
+                        console.error("Error loading post:", err);
+                        return null;
+                    }
+                })
             );
+
             setOpenAlbum(album);
             setAlbumPosts(posts.filter(Boolean));
         } catch (err) {
             setError(err.message);
         }
-    }
+    };
+
     const removeFromAlbum = async (postId) => {
         try {
-            await api(`/api/albums/${openAlbum._id}/posts/${postId}?userId=${me._id}`, "DELETE");
-            setAlbumPosts(prev => prev.filter(p => p._id !== postId));
+            const res = await fetch(
+                `http://localhost:1337/api/albums/${openAlbum._id}/posts/${postId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        userId: me._id
+                    })
+                }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to remove post from album.");
+            }
+
+            setAlbumPosts(prev =>
+                prev.filter(p => p._id !== postId)
+            );
+
             loadAlbums();
         } catch (err) {
             setError(err.message);
@@ -127,7 +167,7 @@ function Albums({ userId }) {
         if (!window.confirm(`Delete the album "${album.name}"? Your posts will not be deleted.`)) return;
         setError("");
         try {
-            const res = await fetch(`/api/albums/${album._id}?userId=${me._id}`, { method: "DELETE" });
+            const res = await fetch(`http://localhost:1337/api/albums/${album._id}?userId=${me._id}`, { method: "DELETE" });
             const data = await res.json();
             if (!res.ok) {
                 setError(data.error || "Could not delete album.");
@@ -148,11 +188,11 @@ function Albums({ userId }) {
                 <h3>Create Album</h3>
                 <div>
                     <label htmlFor="album-name">Name</label>
-                    <input id="album-name" name="name" autoComplete="Album" value={form.name} onChange={handleChange} />
+                    <input id="album-name" className="bg-slate-200 mx-6" name="name" autoComplete="Album" value={form.name} onChange={handleChange} />
                 </div>
                 <div>
                     <label htmlFor="album-description">Description</label>
-                    <textarea id="album-description" name="description" rows={3}
+                    <textarea className="bg-slate-200 mx-6" id="album-description" name="description" rows={3}
                         value={form.description} onChange={handleChange} />
                 </div>
                 <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  ">Submit</button>
@@ -162,15 +202,15 @@ function Albums({ userId }) {
                     <h3>Edit Album</h3>
                     <div>
                         <label htmlFor="album-name">Name</label>
-                        <input id="album-name" name="name" value={form.name} onChange={handleChange} />
+                        <input id="album-name" className="bg-slate-200 mx-6" name="name" value={form.name} onChange={handleChange} />
                     </div>
                     <div>
                         <label htmlFor="album-description">Description</label>
-                        <textarea id="album-description" name="description" rows={3}
+                        <textarea className="bg-slate-200 mx-6" id="album-description" name="description" rows={3}
                             value={form.description} onChange={handleChange} />
                     </div>
-                    <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  ">Submit</button>
-                    <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={closeForm}>Cancel</button>
+                    <button id="album-submit" type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  ">Submit</button>
+                    <button id="album-cancel" type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={closeForm}>Cancel</button>
                 </form>
             )}
 

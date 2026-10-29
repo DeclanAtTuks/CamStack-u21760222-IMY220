@@ -59,12 +59,12 @@ function Login() {
             <h2>Login</h2>
             <div>
                 <label htmlFor="login-username">Username</label>
-                <input type="text" required id="login-username" name="username" value={inputs.username} onChange={handleChange} />
+                <input type="text" className="bg-slate-200 mx-6" required id="login-username" name="username" value={inputs.username} onChange={handleChange} />
                 {errors.username && <p>{errors.username}</p>}
             </div>
             <div>
                 <label htmlFor="login-password">Password</label>
-                <input type="password" required minLength={8} id="login-password" name="password" value={inputs.password} onChange={handleChange} />
+                <input type="password" className="bg-slate-200 mx-6" required minLength={8} id="login-password" name="password" value={inputs.password} onChange={handleChange} autoComplete="current-password" />
                 {errors.password && <p>{errors.password}</p>}
             </div>
             <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Login</button>

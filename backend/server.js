@@ -353,6 +353,9 @@ app.put("/api/users/:id", upload.single("profilePicture"), async (req, res) => {
             return res.json("Nothing to update");
         }
         const result = await collection.updateOne({ _id: new ObjectId(id) }, { $set: updates });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "User not found." });
+        }
         const user = await collection.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } });
         return res.status(200).json(user);
     } catch (error) {
@@ -413,9 +416,6 @@ app.get("/api/feed/local", async (req, res) => {
         const { userId } = req.query;
         const db = getDB();
         const userCollection = db.collection("users");
-        if (!ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "no friends" })
-        }
         const myAcc = await userCollection.findOne({ _id: new ObjectId(userId) });
         if (!myAcc) {
             return res.status(404).json({ error: "User not found" });
@@ -449,10 +449,13 @@ app.put("/api/posts/:id", async (req, res) => {
             return res.status(403).json({ error: "You can only edit your own posts." });
         }
         await collection.updateOne({ _id: post._id }, { $set: { caption: caption, hashtags: hashtags, updatedAt: new Date() } });
-        res.status(200).json({ message: "post updated" });
+        const updatedPost = await collection.findOne({
+            _id: post._id
+        });
+        res.status(200).json(updatedPost);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Failed to get local feed" });
+        res.status(500).json({ error: "Failed to update post" });
     }
 })
 //delete own post
@@ -481,7 +484,7 @@ app.delete("/api/posts/:id", async (req, res) => {
 })
 
 //comments off a post
-app.get("api/posts/:id/comments", async (req, res) => {
+app.get("/api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const db = getDB();
@@ -500,7 +503,7 @@ app.get("api/posts/:id/comments", async (req, res) => {
     }
 })
 //add comment
-app.post("api/posts/:id/comments", async (req, res) => {
+app.post("/api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId, text } = req.body;
@@ -522,7 +525,7 @@ app.post("api/posts/:id/comments", async (req, res) => {
 })
 
 //delete comment
-app.delete("api/comments/:id", async (req, res) => {
+app.delete("/api/comments/:id", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId } = req.query;
