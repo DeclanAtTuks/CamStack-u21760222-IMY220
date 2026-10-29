@@ -9,6 +9,8 @@ function Albums({ userId }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
+    const [openAlbum, setOpenAlbum] = useState(null);
+    const [albumPosts, setAlbumPosts] = useState([]);
     async function loadAlbums() {
         try {
             setLoading(true);
@@ -26,6 +28,26 @@ function Albums({ userId }) {
     useEffect(() => {
         loadAlbums();
     }, [userId]);
+    const viewAlbum = async (album) => {
+        try {
+            const posts = await Promise.all(
+                (album.posts || []).map(pid => api(`/api/posts/${pid}`).catch(() => null))
+            );
+            setOpenAlbum(album);
+            setAlbumPosts(posts.filter(Boolean));
+        } catch (err) {
+            setError(err.message);
+        }
+    }
+    const removeFromAlbum = async (postId) => {
+        try {
+            await api(`/api/albums/${openAlbum._id}/posts/${postId}?userId=${me._id}`, "DELETE");
+            setAlbumPosts(prev => prev.filter(p => p._id !== postId));
+            loadAlbums();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
     const closeForm = () => {
         setIsEditing(false);
@@ -162,6 +184,13 @@ function Albums({ userId }) {
                         <h3>{album.name}</h3>
                         {album.description && <p>{album.description}</p>}
                         <p>{album.posts?.length || 0} posts</p>
+                        <button
+                            type="button"
+                            onClick={() => viewAlbum(album)}
+                            style={{ marginRight: '8px', fontWeight: 'bold' }}
+                        >
+                            View posts
+                        </button>
                         {isOwn && (
                             <div>
                                 <button type="button" onClick={() => startEdit(album)}>Edit</button>
@@ -171,6 +200,17 @@ function Albums({ userId }) {
                     </article>
                 ))}
             </div>
+            {openAlbum && (
+                <div>
+                    <h3>{openAlbum.name}</h3>
+                    {albumPosts.map(p => (
+                        <div key={p._id}>
+                            <PostPreview post={p} />
+                            {isOwn && <button type="button" onClick={() => removeFromAlbum(p._id)}>Remove</button>}
+                        </div>
+                    ))}
+                </div>
+            )}
         </section>
     );
 }

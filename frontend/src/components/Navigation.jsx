@@ -4,7 +4,7 @@ function Navigation() {
 
     return (
         <nav>
-            <img src="/logo.png" alt="" />
+            <Link to="/home" className="navLink"><img src="/logo.png" alt="" /></Link>
             <Link to="/home" className="navLink">Home</Link>
             <Link to="/global" className="navLink">Global</Link>
             <Link to="/friends" className="navLink">friends</Link>

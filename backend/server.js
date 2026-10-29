@@ -1,13 +1,17 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import { ObjectId } from "mongodb";
 import { connectDB, getDB } from "./db.js";
 //image uploads
 import multer from "multer";
+import path from "node:path";
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 1337;
+const UPLOAD_DIR = path.join(import.meta.dirname, "uploads");
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -15,15 +19,29 @@ app.use(express.urlencoded({ extended: true }));
 //tells multer to create some storage for the files that we are going to be uploading
 //cb stands for callback
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "frontend/public/assets/images");
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        cb(null, `${unique}${ext}`);
     },
 });
-//multer middleware instance
-const uploadImage = multer({ storage: storage })
+
+
+function imagesOnly(req, file, cb) {
+    if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only image files are allowed."));
+    }
+}
+
+// 3. With a size limit (200 MB).
+const upload = multer({
+    storage,
+    fileFilter: imagesOnly,
+    limits: { fileSize: 200 * 1024 * 1024 },
+});
 
 //check its wokring
 app.get("/", (req, res) => {
@@ -35,7 +53,7 @@ app.post("/api/login", async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
-            return res.status(400).json({ message: "Username and Password is required." });
+            return res.status(400).json({ error: "Username and Password is required." });
         }
         const db = getDB();
         const collection = db.collection("users");
@@ -100,11 +118,20 @@ app.get("/api/posts", async (req, res) => {
 });
 
 //add post
-app.post("/api/posts", async (req, res) => {
+app.post("/api/posts", upload.single("image"), async (req, res) => {
     try {
-        const { author, username, caption, image, hashtags } = req.body;
+        const { author, username, caption } = req.body;
         if (!username || !username.trim() || !caption || !caption.trim()) {
             return res.status(400).json({ error: "Username and caption are required." });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: "Please choose an image." });
+        }
+        let hashtags = [];
+        try {
+            hashtags = JSON.parse(req.body.hashtags || "[]");
+        } catch {
+            hashtags = [];
         }
         const db = getDB();
         const collection = db.collection("posts");
@@ -112,7 +139,7 @@ app.post("/api/posts", async (req, res) => {
             author: new ObjectId(author),
             username,
             caption,
-            image,
+            image: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
             hashtags: hashtags,
             createdAt: new Date,
             updatedAt: new Date,
@@ -147,6 +174,26 @@ app.get("/api/albums", async (req, res) => {
     }
 });
 
+//one album with all posts in it
+app.get("/api/albums/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = getDB();
+        const collection = db.collection("albums");
+        const album = await collection.findOne({ _id: new ObjectId(id) });
+        if (!album) {
+            return res.status(404).json({ error: "No Album found" });
+        }
+        const postCollection = db.collection("posts");
+        const posts = await postCollection.aggregate([{ $match: { _id: { $in: album.posts || [] } } }]).toArray();
+        const userCollection = db.collection("users");
+        const owner = await userCollection.findOne({ _id: album.owner }, { projection: { username: 1, profilePicture: 1 } });
+        res.json({ ...album, posts, ownerInfo: owner });
+    } catch (error) {
+        console.error("Error getting album:", error);
+        res.status(500).json({ error: "Failed to get album." });
+    }
+})
 //create album
 app.post("/api/albums", async (req, res) => {
     try {
@@ -288,16 +335,23 @@ app.get("/api/users/:id", async (req, res) => {
 })
 
 //edit prof
-app.put("/api/users/:id", async (req, res) => {
+app.put("/api/users/:id", upload.single("profilePicture"), async (req, res) => {
     try {
         const { id } = req.params;
-        const { bio, profilePicture } = req.body;
+        const { userId, bio } = req.body;
+        if (userId !== id) {
+            return res.status(403).json({ error: "You can only edit your own profile." });
+        }
         const updates = {};
         if (bio !== undefined) updates.bio = String(bio).trim();
-        if (profilePicture !== undefined) updates.profilePicture = String(profilePicture).trim();
+        if (req.file) {
+            updates.profilePicture = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        }
         const db = getDB();
         const collection = db.collection("users");
-        if (Object.keys(updates).length === 0) return res.json("Nothing to update");
+        if (Object.keys(updates).length === 0) {
+            return res.json("Nothing to update");
+        }
         const result = await collection.updateOne({ _id: new ObjectId(id) }, { $set: updates });
         const user = await collection.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } });
         return res.status(200).json(user);
@@ -427,7 +481,7 @@ app.delete("/api/posts/:id", async (req, res) => {
 })
 
 //comments off a post
-app.get("/api/posts/:id/comments", async (req, res) => {
+app.get("api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const db = getDB();
@@ -446,7 +500,7 @@ app.get("/api/posts/:id/comments", async (req, res) => {
     }
 })
 //add comment
-app.post("/api/posts/:id/comments", async (req, res) => {
+app.post("api/posts/:id/comments", async (req, res) => {
     try {
         const { id } = req.params;
         const { userId, text } = req.body;
@@ -468,10 +522,10 @@ app.post("/api/posts/:id/comments", async (req, res) => {
 })
 
 //delete comment
-app.post("/api/comments/:id", async (req, res) => {
+app.delete("api/comments/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { userId } = req.body;
+        const { userId } = req.query;
         const db = getDB();
         const commentCollection1 = db.collection("comments");
         const comment = await commentCollection1.findOne({ _id: new ObjectId(id) });
@@ -485,6 +539,17 @@ app.post("/api/comments/:id", async (req, res) => {
         res.status(500).json({ error: "Failed to delete comment" });
     }
 })
+
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        const message =
+            err.code === "LIMIT_FILE_SIZE"
+                ? "That image is too big (max 2 MB)."
+                : err.message;
+        return res.status(400).json({ message });
+    }
+    res.status(400).json({ message: err.message });
+});
 
 connectDB()
     .then(() => {

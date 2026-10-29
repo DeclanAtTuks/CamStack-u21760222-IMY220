@@ -16,7 +16,7 @@ function ProfileP() {
         setIsEditing(false);
     };
     return (
-        <div>
+        <div className="profile-page" style={{ display: 'flex', flexDirection: 'row' }}>
             <ProfileC userId={id} />
             {isOwn && <button type="button" onClick={() => setIsEditing(prev => !prev)}>{isEditing ? "Cancel" : "Edit Profile"}</button>}
             {isOwn && isEditing && <EditProfile onSaved={handleSave} />}
