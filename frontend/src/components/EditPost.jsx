@@ -30,7 +30,7 @@ function EditPost() {
                 <label htmlFor="edit-post-hashtags">Hashtags</label>
                 <input id="edit-post-hashtags" type="text" value={hashtags} onChange={e => setHashtags(e.target.value)} />
             </div>
-            <button type="submit">Save Changes</button>
+            <button type="submit" className="w-36 max-w-xs h-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Save Changes</button>
             {error && <p>{error}</p>}
         </form>
     );

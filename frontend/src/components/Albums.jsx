@@ -142,20 +142,20 @@ function Albums({ userId }) {
     };
 
     return (
-        <section>
+        <section className="flex flex-row flex-wrap items-start justify-start p-10 w-full gap-x-6 gap-y-6 border-8 border-b border-gray-600">
             <h2>Albums</h2>
             {isOwn && <form onSubmit={handleCreate}>
                 <h3>Create Album</h3>
                 <div>
                     <label htmlFor="album-name">Name</label>
-                    <input id="album-name" name="name" value={form.name} onChange={handleChange} />
+                    <input id="album-name" name="name" autoComplete="Album" value={form.name} onChange={handleChange} />
                 </div>
                 <div>
                     <label htmlFor="album-description">Description</label>
                     <textarea id="album-description" name="description" rows={3}
                         value={form.description} onChange={handleChange} />
                 </div>
-                <button type="submit">Submit</button>
+                <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  ">Submit</button>
             </form>}
             {isOwn && isEditing && (
                 <form onSubmit={handleEdit}>
@@ -169,8 +169,8 @@ function Albums({ userId }) {
                         <textarea id="album-description" name="description" rows={3}
                             value={form.description} onChange={handleChange} />
                     </div>
-                    <button type="submit">Submit</button>
-                    <button type="button" onClick={closeForm}>Cancel</button>
+                    <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  ">Submit</button>
+                    <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={closeForm}>Cancel</button>
                 </form>
             )}
 
@@ -178,7 +178,7 @@ function Albums({ userId }) {
             {loading && <p>Loading albums...</p>}
             {!loading && albums.length === 0 && <p>No albums yet.</p>}
 
-            <div>
+            <div className="bg-pink-100 p-12 rounded-3xl w-full max-w-md text-center flex flex-col items-center justify-center">
                 {albums.map(album => (
                     <article key={album._id}>
                         <h3>{album.name}</h3>
@@ -187,14 +187,14 @@ function Albums({ userId }) {
                         <button
                             type="button"
                             onClick={() => viewAlbum(album)}
-                            style={{ marginRight: '8px', fontWeight: 'bold' }}
+                            className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  "
                         >
                             View posts
                         </button>
                         {isOwn && (
                             <div>
-                                <button type="button" onClick={() => startEdit(album)}>Edit</button>
-                                <button type="button" onClick={() => handleDelete(album)}>Delete</button>
+                                <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={() => startEdit(album)}>Edit</button>
+                                <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={() => handleDelete(album)}>Delete</button>
                             </div>
                         )}
                     </article>
@@ -206,7 +206,7 @@ function Albums({ userId }) {
                     {albumPosts.map(p => (
                         <div key={p._id}>
                             <PostPreview post={p} />
-                            {isOwn && <button type="button" onClick={() => removeFromAlbum(p._id)}>Remove</button>}
+                            {isOwn && <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium  " onClick={() => removeFromAlbum(p._id)}>Remove</button>}
                         </div>
                     ))}
                 </div>

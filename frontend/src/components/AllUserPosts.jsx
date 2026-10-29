@@ -27,7 +27,7 @@ function AllUserPosts({ userId }) {
     return (
         <section>
             <h2>Posts</h2>
-            <div>
+            <div className="flex flex-row flex-wrap items-start justify-start p-10 w-full gap-x-6 gap-y-6 border-b border-gray-100">
                 {posts.map(post => (
                     <PostPreview key={post._id} post={post} />
                 ))}

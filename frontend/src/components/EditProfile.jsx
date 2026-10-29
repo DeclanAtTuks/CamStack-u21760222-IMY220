@@ -47,7 +47,7 @@ function EditProfile({ onSaved }) {
                 <label htmlFor="edit-bio">Bio</label>
                 <textarea id="edit-bio" value={bio} onChange={e => setBio(e.target.value)} rows={3} />
             </div>
-            <button type="submit">Save Changes</button>
+            <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Save Changes</button>
             {error && <p>{error}</p>}
         </form>
     );

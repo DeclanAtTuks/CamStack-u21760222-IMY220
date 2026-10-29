@@ -8,12 +8,11 @@ import EditPost from "../components/EditPost";
 function PostP() {
     const { id } = useParams();
     const [isEditing, setIsEditing] = useState(false);
-    const postToDisplay = examplePosts.find(post => post.id == id)
     return (
         <div>
             <Image imageUrl={postToDisplay.imageUrl} caption={postToDisplay.caption} />
-            <PostC post={postToDisplay} />
-            <button type="button" onClick={() => setIsEditing(prev => !prev)}>
+            <PostC post={id} />
+            <button type="button" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium " onClick={() => setIsEditing(prev => !prev)}>
                 {isEditing ? "Cancel" : "Edit Post"}
             </button>
             {isEditing && <EditPost />}

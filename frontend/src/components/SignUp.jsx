@@ -93,7 +93,7 @@ function SignUp() {
                 <input type="password" required minLength={8} id="sign-up-conPassword" name="conPassword" value={inputs.conPassword} onChange={handleChange} />
                 {errors.conPassword && <p>{errors.conPassword}</p>}
             </div>
-            <button type="submit">Sign Up</button>
+            <button type="submit" className="w-32 max-w-xs h-8 mx-6 my-12 bg-orange-400 text-white hover:bg-orange-800 focus:ring-blue-500 rounded-xl font-medium ">Sign Up</button>
         </form>
     );
 }

@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 1337;
 const UPLOAD_DIR = path.join(import.meta.dirname, "uploads");
-
+app.use("/uploads", express.static(UPLOAD_DIR));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -140,7 +140,7 @@ app.post("/api/posts", upload.single("image"), async (req, res) => {
             username,
             caption,
             image: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
-            hashtags: hashtags,
+            hashtags,
             createdAt: new Date,
             updatedAt: new Date,
         };
